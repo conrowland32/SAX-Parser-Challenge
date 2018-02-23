@@ -22,3 +22,8 @@
 hs_err_pid*
 /SAXParser/nbproject/private/
 /nbproject/private/
+/SAXParser/build/
+/SAXParser/dist/
+/SAXParserChallenge/nbproject/private/
+/build/
+/dist/
