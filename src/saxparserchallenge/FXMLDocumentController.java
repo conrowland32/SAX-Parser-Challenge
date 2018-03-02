@@ -12,6 +12,7 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.ResourceBundle;
+import java.util.Stack;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
@@ -30,6 +31,7 @@ public class FXMLDocumentController implements Initializable {
     
     @FXML
     private TextArea textArea;
+    private Stack<DOMObject> stack = new Stack<>();
     
     @Override
     public void initialize(URL url, ResourceBundle rb) {
@@ -42,28 +44,36 @@ public class FXMLDocumentController implements Initializable {
         File file = fileChooser.showOpenDialog(textArea.getScene().getWindow());
         if (file != null) {
             try {
-                DOMObject dom = DOMObjectXMLLoader.load(file, textArea);
-                System.out.println("DOM Loaded.");
-                HashMap<Integer, DomElement> elementMap = dom.getList();
-                for(int i = 0; i < elementMap.size(); i++) {
-                    this.printElement(elementMap.get(i));
+                DOMObject root = DOMObjectXMLLoader.load(file);
+                fillStack(root);
+                DOMObject currentElement;
+                HashMap<String, String> attributes;
+                for(int i = 0; i < stack.size(); i++) {
+                    currentElement = stack.get(i);
+                    for(int j = 0; j < currentElement.getDepth(); j++) {
+                        textArea.appendText("\t");
+                    }
+                    textArea.appendText("<" + stack.get(i).getName());
+                    attributes = currentElement.getAttributes();
+                    for(String name : attributes.keySet()) {
+                        textArea.appendText(" " + name + "=\"" + attributes.get(name) + "\"");
+                    }
+                    textArea.appendText("> " + currentElement.getText() + "\n");
                 }
             } catch (Exception ex) {
                 displayExceptionAlert("Exception parsing XML file.", ex);
             }
         }
     }
-
-    private void printElement(DomElement element) {
-        for(int i = 0; i < element.getLevel(); i++) {
-            textArea.appendText("\t");
+    
+    private void fillStack(DOMObject root) {
+        ArrayList<DOMObject> children = root.getChildren();
+        stack.push(root);
+        if(!children.isEmpty()) {
+            for(int i = 0; i < children.size(); i++) {
+                fillStack(children.get(i));
+            }
         }
-        textArea.appendText("<" + element.getName());
-        HashMap<String, String> attributes = element.getAttributes();
-        for(String name : attributes.keySet()) {
-            textArea.appendText(" " + name + "=\"" + attributes.get(name) + "\"");
-        }
-        textArea.appendText("> " + element.getValue() + "\n");
     }
     
     @FXML

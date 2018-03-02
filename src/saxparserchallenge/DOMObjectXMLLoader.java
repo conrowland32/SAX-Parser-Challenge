@@ -5,7 +5,7 @@
 package saxparserchallenge;
 
 import java.io.File;
-import java.util.ArrayList;
+import java.util.Stack;
 import javafx.scene.control.TextArea;
 import javax.xml.parsers.SAXParser;
 import javax.xml.parsers.SAXParserFactory;
@@ -14,43 +14,50 @@ import org.xml.sax.SAXException;
 import org.xml.sax.helpers.DefaultHandler;
 
 public class DOMObjectXMLLoader {
-
-    public static DOMObject load(File xmlFile, TextArea target) throws Exception {
-        DOMObject dom = new DOMObject();
-        ArrayList<DomElement> elementList = new ArrayList<>();
+    static DOMObject root = null;
+    public static DOMObject load(File xmlFile) throws Exception {
         try {
-            
             SAXParserFactory factory = SAXParserFactory.newInstance();
-            factory.setValidating(true);
             SAXParser saxParser = factory.newSAXParser();
             
             DefaultHandler handler = new DefaultHandler() {
-                DomElement currentElement;
-                int order = 0;
-                int level = 0;
+                Stack<DOMObject> stack = new Stack<>();
+                DOMObject currentElement = null;
                 
                 @Override
                 public void startElement(String uri, String localName, String qName, Attributes attributes) throws SAXException {
-                    currentElement = new DomElement(order, level);
-                    level++;
-                    order++;
-                    currentElement.setName(qName);
-                    elementList.add(currentElement);
-                    for(int j = 0; j < attributes.getLength(); j++) {
-                        currentElement.addAttribute(attributes.getQName(j), attributes.getValue(j));
+                    DOMObject newElement = new DOMObject(qName);
+                    newElement.setDepth(stack.size());
+                    stack.push(newElement);
+                    for(int i = 0; i < attributes.getLength(); i++) {
+                        newElement.addAttribute(attributes.getQName(i), attributes.getValue(i));
                     }
+                    if(currentElement != null) {
+                        currentElement.addChild(newElement);
+                    }
+                    currentElement = newElement;
                 }
                 
                 @Override
                 public void endElement(String uri, String localName, String qName) throws SAXException {
-                    dom.addElement(elementList.get(elementList.size()-1).getOrder(), elementList.get(elementList.size()-1));
-                    elementList.remove(elementList.size()-1);
-                    level--;
+                    if(stack != null) {
+                        DOMObject finishedElement = stack.pop();
+                        if(stack.isEmpty()) {
+                            currentElement = null;
+                            root = finishedElement;
+                        } else {
+                            currentElement = stack.lastElement();
+                        }
+                    }
                 }
                 
                 @Override
                 public void characters(char ch[], int start, int length) throws SAXException {
-                    elementList.get(elementList.size()-1).setValue((new String(ch, start, length)).replace("\r\n", " ").replace("\n", " "));
+                    if(currentElement.getText() == null) {
+                        currentElement.setText(String.copyValueOf(ch, start, length).trim().replace("\r\n", " ").replace("\n", " "));
+                    } else {
+                        currentElement.setText(currentElement.getText() + String.copyValueOf(ch, start, length).trim().replace("\r\n", " ").replace("\n", " "));
+                    }
                 }
             };
             
@@ -59,7 +66,7 @@ public class DOMObjectXMLLoader {
             throw e;
         }
         
-        return dom;
+        return root;
     }
     
 }
